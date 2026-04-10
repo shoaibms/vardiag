@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vardiag"
+version = "0.1.0"
+description = "Variance Alignment Diagnostic (VAD) for multi-omics feature selection"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+
+keywords = [
+    "feature selection", "multi-omics", "bioinformatics",
+    "variance filtering", "explainable AI", "SHAP",
+    "decoupling index", "genomics", "machine learning",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+# Only numpy is strictly required; everything else is optional
+dependencies = [
+    "numpy>=1.23",
+]
+
+[project.optional-dependencies]
+full = [
+    "scipy>=1.9",
+    "scikit-learn>=1.2",
+    "pandas>=1.5",
+]
+plot = [
+    "matplotlib>=3.6",
+    "seaborn>=0.12",
+]
+dev = [
+    "pytest>=7",
+    "pytest-cov",
+    "scipy>=1.9",
+    "scikit-learn>=1.2",
+    "pandas>=1.5",
+    "matplotlib>=3.6",
+]
+
+[project.scripts]
+vardiag = "vardiag.cli:main"
+
+[project.urls]
+Homepage   = "https://github.com/shoaibms/vardiag"
+Repository = "https://github.com/shoaibms/vardiag"
+Issues     = "https://github.com/shoaibms/vardiag/issues"
+Manuscript = "https://github.com/shoaibms/var-pre"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vardiag*"]
+
+[tool.pytest.ini_options]
+testpaths = ["vardiag/tests"]
+addopts   = "-v --tb=short --cov=vardiag --cov-fail-under=90"
+
+[tool.coverage.run]
+source = ["vardiag"]
+omit   = ["vardiag/tests/*", "vardiag/cli.py"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
