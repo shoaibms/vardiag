@@ -515,7 +515,7 @@ vardiag/
 @article{vardiag2026,
   title   = {When Variance Misleads: A Diagnostic Framework for Feature
              Selection in Multi-Omics Data},
-  author  = {Shoaib, Mirza and others},
+  author  = {Shoaib, Mirza; Baten, Abdul and Matthew J. Hayden},
   year    = {2026},
   journal = {(under review)},
   url     = {https://github.com/shoaibms/var-pre},
