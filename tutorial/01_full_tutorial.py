@@ -29,7 +29,7 @@ Run:
 
 Expected output:
     All sections complete with matching zones to manuscript Table 1.
-    Total runtime: < 60 seconds.
+    Runtime depends on machine and installed extras (scipy, scikit-learn).
 =======================================================================
 """
 
@@ -328,7 +328,21 @@ print("""
     BRCA methylation → RED    (anti-aligned, F-DI > 1)
     IBD MGX          → GREEN  (coupled,      F-DI < 1)
     CCLE mRNA        → GREEN  (coupled,      F-DI < 1)
-    GBM methylation  → YELLOW (random-like,  F-DI ≈ 1)
+    GBM methylation  → RED    (high-variance features depleted of signal)
+
+  Note on GBM methylation:
+  The manuscript reports DI = 1.00 (chance-level overlap between variance-ranked
+  and SHAP-ranked features). The package VAD assigns RED_HARMFUL consistently
+  (eta_ES approx 0.29): high-variance features carry only ~29% of the average
+  class signal. DI and VAD are complementary, not contradictory:
+
+    DI  says: variance-ranked and SHAP-ranked sets overlap at chance level
+              (filtering gives a random sample of important features)
+    VAD says: the high-variance features specifically have low class signal
+
+  Both consistently indicate that variance filtering is unreliable for this view.
+  TCGA-GBM methylation is treated as a sensitivity analysis in the manuscript
+  because GBM subtype signal is weaker than in the primary cohorts.
 """)
 
 
