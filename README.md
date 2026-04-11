@@ -1,8 +1,8 @@
 # vardiag — Variance Alignment Diagnostic
 
 [![CI](https://github.com/shoaibms/vardiag/actions/workflows/ci.yml/badge.svg)](https://github.com/shoaibms/vardiag/actions)
-[![PyPI](https://img.shields.io/pypi/v/vardiag)](https://pypi.org/project/vardiag/)
-[![Python](https://img.shields.io/pypi/pyversions/vardiag)](https://pypi.org/project/vardiag/)
+[![PyPI](https://img.shields.io/pypi/v/vardiag?cache_bust=1)](https://pypi.org/project/vardiag/)
+[![Python](https://img.shields.io/pypi/pyversions/vardiag?cache_bust=1)](https://pypi.org/project/vardiag/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/shoaibms/vardiag/blob/main/LICENSE)
 
 **vardiag** is a lightweight Python package for the Variance Alignment Diagnostic
