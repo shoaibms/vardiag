@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+type: software
+title: "vardiag: Variance Alignment Diagnostic for feature-filter safety assessment"
+version: 0.1.0
+date-released: "2026-04-10"
+license: MIT
+
+authors:
+  - family-names: "Shoaib"
+    given-names: "Mirza"
+    orcid: "https://orcid.org/0000-0002-6773-6050"
+  - family-names: "Baten"
+    given-names: "Abdul"
+  - family-names: "Hayden"
+    given-names: "Matthew J."
+
+repository-code: "https://github.com/shoaibms/vardiag"
+url: "https://github.com/shoaibms/vardiag"
+
+abstract: >
+  vardiag implements the Variance Alignment Diagnostic (VAD), a lightweight,
+  label-aware, model-free framework for assessing whether variance-based feature
+  filtering is likely safe, harmful, or inconclusive for a labelled
+  high-dimensional dataset before model training.
+
+keywords:
+  - feature selection
+  - multi-omics
+  - variance filtering
+  - bioinformatics
+  - decoupling index
+  - genomics
+  - machine learning
+
+references:
+  - type: article
+    title: >
+      When Variance Misleads: A Diagnostic Framework for Feature Selection
+      in Multi-Omics Data
+    authors:
+      - family-names: "Shoaib"
+        given-names: "Mirza"
+      - family-names: "Baten"
+        given-names: "Abdul"
+      - family-names: "Hayden"
+        given-names: "Matthew J."
+    year: 2026
+    notes: "Under review. Analysis code: https://github.com/shoaibms/var-pre"
