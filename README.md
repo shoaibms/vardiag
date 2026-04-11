@@ -3,14 +3,20 @@
 [![CI](https://github.com/shoaibms/vardiag/actions/workflows/ci.yml/badge.svg)](https://github.com/shoaibms/vardiag/actions)
 [![PyPI](https://img.shields.io/pypi/v/vardiag)](https://pypi.org/project/vardiag/)
 [![Python](https://img.shields.io/pypi/pyversions/vardiag)](https://pypi.org/project/vardiag/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-**vardiag** tells you — typically in under one second, without training any model — whether
-variance-based feature filtering is safe or harmful for your omics dataset.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/shoaibms/vardiag/blob/main/LICENSE)
+
+**vardiag** is a lightweight Python package for the Variance Alignment Diagnostic
+(VAD): a label-aware, model-free check for whether variance-based feature filtering
+is likely safe, harmful, or inconclusive for a given labelled high-dimensional dataset.
 
 ```python
 from vardiag import diagnose
-result = diagnose(X_train, y_train, k_pct=10)
-print(result.zone)      # GREEN_SAFE | RED_HARMFUL | YELLOW_INCONCLUSIVE
+from vardiag.data import load_view
+
+view = load_view("brca_methylation")
+result = diagnose(view.X, view.y, k_pct=10)
+
+print(result.zone)      # RED_HARMFUL
 print(result.summary())
 ```
 
@@ -61,14 +67,14 @@ vardiag info
 
 | Package | Status | Role |
 |---|---|---|
-| `numpy >= 1.23` | **Required** | All computations |
-| `scipy >= 1.9` | Recommended | Exact Mann-Whitney U and Spearman ρ |
-| `scikit-learn >= 1.2` | Recommended | PCA for PCLA and SAS metrics |
-| `pandas >= 1.5` | Optional | Named-column CSV loading in CLI |
-| `matplotlib >= 3.6` | Optional | Plotting |
+| `numpy >= 1.23` | **Required** | Core computations |
+| `scipy >= 1.9` | Recommended | Exact Mann–Whitney U and Spearman ρ |
+| `scikit-learn >= 1.2` | Recommended | PCA for PCLA and SAS |
+| `pandas >= 1.5` | Optional | CSV/TSV loading with headers in the CLI |
+| `matplotlib >= 3.6` | Optional | Plotting examples |
 
-Without scipy and scikit-learn, vardiag falls back to pure-NumPy
-approximations for all metrics. Install the full suite with:
+Without scipy and scikit-learn, vardiag falls back to pure-NumPy approximations
+for all metrics. Install the full suite with:
 
 ```bash
 pip install "vardiag[full]"
@@ -96,21 +102,21 @@ print(result.summary())
 ============================================================
   VAD Diagnostic Report  (K = 10%)
 ============================================================
-  Dataset    : 312 samples × 11189 features  (4 classes)
+  Dataset    : 312 samples x 11189 features  (4 classes)
   Computed in: 0.43 s
 
-  Zone       : 🔴  RED_HARMFUL
+  Zone       : RED_HARMFUL
 
   Metrics
-    η_ES     : +0.285  (>1 = enriched for signal)
+    eta_ES   : +0.285  (>1 = enriched for signal)
     VSA      : -0.045  (>0 = aligned)
-    α'       : -0.230  (Spearman V vs η²)
-    PCLA     : +0.024  (PCA-weighted η²)
+    alpha'   : -0.230  (Spearman V vs eta2)
+    PCLA     : +0.024  (PCA-weighted eta2)
     SAS      : -0.191  (spectral alignment)
     F-DI     : +1.045  (<1 = coupled)
 
   Decision rule
-    ⚠️  Variance filtering likely harmful. Use importance-guided
+    Variance filtering likely harmful. Use importance-guided
     selection (e.g. SHAP) or include all features.
 ============================================================
 ```
@@ -119,11 +125,27 @@ print(result.summary())
 
 ## Zone Interpretation
 
-| Zone | Condition | Meaning | Action |
+The analytical decision anchors from the manuscript are:
+
+- **η_ES = 1**: break-even point for signal enrichment in the high-variance tail
+- **VSA = 0**: no variance–signal alignment
+
+By default, the package applies a **conservative margin** of `margin=0.05` around
+these thresholds for zone assignment:
+
+- GREEN requires `η_ES > 1.05` and `VSA > 0`
+- RED requires `η_ES < 0.95` and `VSA < 0`
+- everything else is YELLOW
+
+| Zone | Condition (default `margin=0.05`) | Meaning | Action |
 |---|---|---|---|
-| 🟢 **GREEN_SAFE** | η_ES > 1.05 and VSA > 0 | High-var features carry above-average signal | Proceed with variance filtering |
-| 🔴 **RED_HARMFUL** | η_ES < 0.95 and VSA < 0 | High-var features depleted of signal | Use importance-guided selection (e.g. SHAP) |
-| 🟡 **YELLOW_INCONCLUSIVE** | Mixed signals | Ambiguous alignment | Run a small pilot ablation |
+| **GREEN_SAFE** | `η_ES > 1.05` and `VSA > 0` | High-var features carry above-average class signal | Proceed with variance filtering |
+| **RED_HARMFUL** | `η_ES < 0.95` and `VSA < 0` | High-var features depleted of signal | Use importance-guided selection (e.g. SHAP) |
+| **YELLOW_INCONCLUSIVE** | Otherwise | Near-boundary or mixed evidence | Run a small pilot ablation |
+
+The analytical threshold from the manuscript is η_ES = 1.0. The ±0.05 margin
+creates the 1.05 / 0.95 boundaries shown above. Pass `margin=0.0` to use the
+exact manuscript thresholds without conservatism.
 
 ---
 
@@ -146,7 +168,7 @@ result = diagnose(
 result.zone          # str: 'GREEN_SAFE' | 'RED_HARMFUL' | 'YELLOW_INCONCLUSIVE'
 result.eta_es        # float: signal enrichment ratio
 result.vsa           # float: variance-signal alignment
-result.alpha_prime   # float: Spearman(V_total, η²)
+result.alpha_prime   # float: Spearman(V_total, eta2)
 result.pcla          # float: PCA-weighted signal alignment
 result.sas           # float: spectral alignment score
 result.f_di          # float: supervision-free decoupling index
@@ -157,8 +179,11 @@ result.to_dict()     # flat dict — use as a pandas DataFrame row
 
 ### `diagnose_cv(X, y, cv_folds, k_pct=10)`
 
-Leakage-free version for use inside ML pipelines. Computes VAD
-fold-by-fold on training data only, then aggregates.
+Leakage-safe wrapper for cross-validation workflows. The diagnostic is computed
+on each training fold only, then aggregated across folds by taking the **mean**
+of numeric metrics (`eta_es`, `vsa`, `alpha_prime`, `pcla`, `sas`, `f_di`,
+`elapsed_s`). The reported `zone` is the zone obtained by applying the standard
+zone rule to the aggregated mean metrics.
 
 ```python
 from sklearn.model_selection import StratifiedKFold
@@ -175,41 +200,89 @@ print(result.summary())
 
 Full DI curve and hidden biomarker analysis. Requires pre-computed SHAP scores.
 
+For multiclass problems, aggregate SHAP values across classes before passing
+to `scan()`:
+
 ```python
+import numpy as np
 import shap
 from vardiag import scan
 
-explainer = shap.TreeExplainer(model)
-shap_vals = explainer.shap_values(X_train)
-shap_imp  = dict(zip(feature_names, np.abs(shap_vals).mean(axis=0).tolist()))
+
+def mean_abs_shap_importance(shap_values) -> np.ndarray:
+    """
+    Convert SHAP outputs to one feature-importance vector.
+
+    Supports:
+    - list[n_classes] of (n_samples, n_features)   — TreeExplainer multiclass
+    - ndarray (n_classes, n_samples, n_features)   — stacked multiclass
+    - ndarray (n_samples, n_features)              — binary / regression
+    """
+    if isinstance(shap_values, list):
+        arr = np.stack(shap_values, axis=0)
+        return np.abs(arr).mean(axis=(0, 1))
+    arr = np.asarray(shap_values)
+    if arr.ndim == 3:
+        return np.abs(arr).mean(axis=(0, 1))
+    if arr.ndim == 2:
+        return np.abs(arr).mean(axis=0)
+    raise ValueError(f"Unsupported SHAP shape: {arr.shape}")
+
+
+explainer   = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X_train)
+shap_imp    = mean_abs_shap_importance(shap_values)
 
 report = scan(
-    X_train, y_train,
-    shap_importance=shap_imp,
+    X_train,
+    y_train,
+    shap_importance=dict(zip(feature_names, shap_imp.tolist())),
     feature_names=feature_names,
     k_pcts=[1, 5, 10, 20],
 )
 print(report.summary())
-# Prints: DI curve table, hidden biomarker fraction, gene-level Jaccard
+# Prints: VAD report, DI curve table, hidden biomarker fraction, Jaccard
 ```
+
+A complete copy-pasteable example with a standalone demo is in
+`examples/scan_multiclass_shap.py`.
+
+### Auxiliary metrics
+
+Only **η_ES** and **VSA** drive the default GREEN / RED / YELLOW zone rule.
+The other metrics are complementary diagnostics, not zone drivers:
+
+- **α'** (Spearman of V_total vs η²) checks monotone global agreement between
+  variance ranking and signal ranking. Useful for confirming zone assignments
+  on borderline YELLOW cases where η_ES and VSA point in the same direction
+  but are close to the threshold.
+- **PCLA** measures whether the leading PCA directions preferentially capture
+  class-discriminative signal (eigenvalue-weighted η²).
+- **SAS** checks whether larger-eigenvalue PCs are more label-aligned
+  (Spearman of explained variance vs η²_PC).
+- **F-DI** is a model-free companion to the SHAP-supervised DI. It substitutes
+  η²-ranked features for SHAP-ranked features and requires no model training.
+  Use `DI` (from `scan()`) when supervised importance is available; use `F-DI`
+  as a lightweight pre-training signal.
 
 ### Command-line interface
 
 ```bash
-# Run on CSV files
+# CSV
 vardiag run --X features.csv --y labels.csv --k 10
 
-# Save result as JSON
-vardiag run --X features.npy --y labels.npy --k 10 --out result.json
+# TSV + line-delimited text labels
+vardiag run --X features.tsv --y labels.txt --k 10
 
-# With a feature names file (one name per line)
-vardiag run --X features.csv --y labels.csv --features gene_names.txt
+# NumPy arrays, save JSON output
+vardiag run --X features.npy --y labels.npy --k 10 --out result.json
 
 # Check installed dependencies
 vardiag info
 ```
 
-Supported file formats: `.npy`, `.csv`, `.tsv`, `.txt`
+Supported matrix formats: `.npy`, `.csv`, `.tsv`, whitespace-delimited `.txt`
+Supported label formats: `.npy`, `.csv`, `.tsv`, one-label-per-line `.txt`
 
 ---
 
@@ -222,11 +295,11 @@ Supported file formats: `.npy`, `.csv`, `.tsv`, `.txt`
 | **α'** | Monotone alignment | Spearman(V_total, η²) | > 0: variance and signal co-vary |
 | **PCLA** | PCA label alignment | Σ(λ_k / Σλ) · η²(PC_k) | Higher: PCA variance structure tracks labels |
 | **SAS** | Spectral alignment | Spearman(λ_k, η²(PC_k)) | > 0: higher-eigenvalue PCs carry more signal |
-| **F-DI** | Supervision-free DI | 1 − J̃(TopVar, Topη²) | < 1: coupled; > 1: anti-aligned |
-| **DI** | Decoupling Index | 1 − J̃(TopVar, TopSHAP) | Requires SHAP. < 1: coupled; > 1: anti-aligned |
+| **F-DI** | Supervision-free DI | 1 − J(TopVar, Topη²) | < 1: coupled; > 1: anti-aligned |
+| **DI** | Decoupling Index | 1 − J(TopVar, TopSHAP) | Requires SHAP. < 1: coupled; > 1: anti-aligned |
 
 The signal fraction η² = V_between / V_total (ANOVA-style decomposition).
-V_between is the between-class variance; V_within is the within-class variance.
+V_between is the between-class variance; V_total is the total feature variance.
 
 ---
 
@@ -250,16 +323,35 @@ or use `diagnose_cv`.
 
 ---
 
-## Tutorial: Reproducing the Manuscript Results
+## Self-contained example using bundled views
 
-A complete 10-step tutorial is included that reproduces all key findings
-on bundled synthetic views calibrated to the real cohorts.
+```python
+from vardiag import diagnose
+from vardiag.data import load_view
+
+for name in ["brca_methylation", "ibd_mgx", "ccle_mrna", "gbm_methylation"]:
+    view = load_view(name)
+    result = diagnose(view.X, view.y, k_pct=10)
+    print(
+        f"{name:18s}  zone={result.zone:20s}  "
+        f"eta_es={result.eta_es:6.3f}  vsa={result.vsa:6.3f}"
+    )
+```
+
+Run `python examples/quickstart.py` for the full six-example walkthrough.
+
+---
+
+## Tutorial: Demonstrating the Manuscript Alignment Regimes
+
+A complete 10-step tutorial **demonstrates the key VAD alignment regimes** using
+bundled synthetic views calibrated to the manuscript cohorts.
 
 ```bash
 python tutorial/01_full_tutorial.py
 ```
 
-Expected runtime: under 30 seconds.
+Runtime depends on machine and installed extras.
 
 | Step | Content |
 |---|---|
@@ -277,12 +369,25 @@ Expected runtime: under 30 seconds.
 **Reproduced zones (Step 8):**
 
 ```
-View                  Zone           η_ES    VSA   F-DI   ms DI   ms ρ
-brca_methylation      RED_HARMFUL    0.29  -0.04   1.05    1.03  -0.32
-ibd_mgx               GREEN_SAFE     4.88   0.50   0.11    0.70   0.76
-ccle_mrna             GREEN_SAFE     5.09   0.49   0.27    0.92   0.68
-gbm_methylation       RED_HARMFUL    0.94  -0.01   0.25    1.00   0.02
+View                  Zone             eta_ES   VSA    F-DI   ms DI   ms rho
+brca_methylation      RED_HARMFUL       0.29  -0.04   1.05    1.03   -0.32
+ibd_mgx               GREEN_SAFE        4.88   0.50   0.11    0.70    0.76
+ccle_mrna             GREEN_SAFE        5.09   0.49   0.27    0.92    0.68
+gbm_methylation       RED_HARMFUL       0.29  -0.05   1.04    1.00    0.02
 ```
+
+> **Note on `gbm_methylation`:** The manuscript reports a DI of 1.00 for TCGA-GBM
+> methylation, indicating chance-level overlap between variance-ranked and
+> SHAP-ranked features — variance filtering provides a random sample of important
+> features. The package's VAD consistently assigns RED_HARMFUL (η_ES ≈ 0.29):
+> high-variance features carry only ~29% of the average class signal, making them
+> substantially depleted of discriminative information. **DI and VAD are
+> complementary, not contradictory**: DI says the selected features overlap randomly
+> with SHAP-important features; VAD says those same high-variance features have low
+> intrinsic class signal. Both consistently indicate that variance filtering is
+> unreliable for this view. TCGA-GBM methylation is treated as a sensitivity
+> analysis in the manuscript because the underlying subtype signal is weaker than
+> in the primary cohorts.
 
 ---
 
@@ -307,7 +412,13 @@ views = load_all_views()  # dict of all four views
 | `brca_methylation` | MLOmics BRCA | DNA methylation | 312 | 11,189 | RED |
 | `ibd_mgx` | IBDMDB | Metagenomics | 155 | 368 | GREEN |
 | `ccle_mrna` | CCLE | mRNA expression | 470 | 2,000 | GREEN |
-| `gbm_methylation` | TCGA-GBM | DNA methylation | 136 | 8,000 | RED |
+| `gbm_methylation` | TCGA-GBM | DNA methylation | 136 | 8,000 | RED* |
+
+*See tutorial Step 8 note above on DI vs VAD assignment for `gbm_methylation`.
+
+These views are procedurally generated — no external data files are bundled.
+Real manuscript DI and ρ reference values are stored as metadata on each view
+(`manuscript_di`, `manuscript_rho`) for comparison.
 
 ---
 
@@ -337,7 +448,7 @@ Source: [depmap.org/portal/download/](https://depmap.org/portal/download/)
 **TCGA-GBM** (mRNA, methylation, CNV)
 Source: [xenabrowser.net](https://xenabrowser.net)
 
-Full preprocessing pipeline: [github.com/shoaibms/var-pre/code/01_bundles/](https://github.com/shoaibms/var-pre)
+Full preprocessing pipeline: [github.com/shoaibms/var-pre](https://github.com/shoaibms/var-pre)
 
 ---
 
@@ -363,7 +474,9 @@ pytest vardiag/tests/ -v --cov=vardiag --cov-report=term-missing
 pytest vardiag/tests/ -q
 ```
 
-Expected: **105 tests passing**, 93% coverage, 0 RuntimeWarnings.
+The test suite collects **107 tests** across 11 test classes, with coverage
+enforced above 90% on core modules. Run `pytest --co -q | tail -1` to verify the
+current count before any release.
 
 ---
 
@@ -372,21 +485,25 @@ Expected: **105 tests passing**, 93% coverage, 0 RuntimeWarnings.
 ```
 vardiag/
 ├── vardiag/
-│   ├── __init__.py       public API surface
-│   ├── metrics.py        all mathematical primitives (IO-free)
-│   ├── core.py           diagnose / diagnose_cv / scan
-│   ├── validation.py     strict input validation
-│   ├── data.py           bundled synthetic manuscript views
-│   ├── cli.py            command-line interface
+│   ├── __init__.py          public API surface
+│   ├── metrics.py           all mathematical primitives (IO-free)
+│   ├── core.py              diagnose / diagnose_cv / scan
+│   ├── validation.py        strict input validation
+│   ├── data.py              bundled synthetic manuscript views
+│   ├── cli.py               command-line interface
+│   ├── py.typed             PEP 561 type marker
 │   └── tests/
-│       └── test_vardiag.py   105 tests
+│       └── test_vardiag.py  107 tests
 ├── tutorial/
-│   └── 01_full_tutorial.py   10-step manuscript walkthrough
+│   └── 01_full_tutorial.py  10-step manuscript walkthrough
 ├── examples/
-│   └── quickstart.py         6 quick examples
+│   ├── quickstart.py            self-contained bundled-view examples
+│   └── scan_multiclass_shap.py  correct multiclass SHAP integration
 ├── pyproject.toml
 ├── README.md
+├── CHANGELOG.md
 ├── CONTRIBUTING.md
+├── CITATION.cff
 └── LICENSE
 ```
 
@@ -398,6 +515,7 @@ vardiag/
 @article{vardiag2026,
   title   = {When Variance Misleads: A Diagnostic Framework for Feature
              Selection in Multi-Omics Data},
+  author  = {Shoaib, Mirza and others},
   year    = {2026},
   journal = {(under review)},
   url     = {https://github.com/shoaibms/var-pre},
