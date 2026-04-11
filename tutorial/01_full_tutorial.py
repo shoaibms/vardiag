@@ -479,7 +479,7 @@ print("""
     ✅  Anti-aligned view (BRCA methylation): RED_HARMFUL zone, F-DI > 1
     ✅  Coupled view (IBD MGX):               GREEN_SAFE zone, F-DI < 1
     ✅  Coupled view (CCLE mRNA):             GREEN_SAFE zone, F-DI < 1
-    ✅  Random view (GBM methylation):        YELLOW zone,     F-DI ≈ 1
+    ✅  Random view (GBM methylation):        RED_HARMFUL,     F-DI > 1
 
   All metrics computed in < 1 second per view.
   No model training required for the VAD diagnostic.
