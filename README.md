@@ -427,7 +427,7 @@ Real manuscript DI and ρ reference values are stored as metadata on each view
 The manuscript analyses four public cohorts. Loading instructions:
 
 **MLOmics BRCA** (methylation, mRNA, miRNA, CNV)
-Source: [Yang et al. 2025, Sci. Data 12:913](https://github.com/shoaibms/var-pre)
+Source: [HuggingFace — AIBIC/MLOmics](https://huggingface.co/datasets/AIBIC/MLOmics)
 
 ```python
 X = np.load("mlomics_brca_methylation_X.npy")  # (312, 11189)
@@ -448,7 +448,7 @@ Source: [depmap.org/portal/download/](https://depmap.org/portal/download/)
 **TCGA-GBM** (mRNA, methylation, CNV)
 Source: [xenabrowser.net](https://xenabrowser.net)
 
-Full preprocessing pipeline: [github.com/shoaibms/var-pre](https://github.com/shoaibms/var-pre)
+Full preprocessing pipeline: [github.com/shoaibms/var-pre/tree/main/code/01_bundles/](https://github.com/shoaibms/var-pre/tree/main/code/01_bundles/)
 
 ---
 
